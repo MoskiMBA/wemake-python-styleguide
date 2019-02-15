@@ -156,3 +156,47 @@ class FileMagicCommentsVisitor(BaseTokenVisitor):
 
         """
         self._check_empty_line_after_codding(token)
+
+
+@final
+class CapitalizationCommentsVisitor(BaseTokenVisitor):
+    """Checks for consistent capitalization of comments."""
+
+    def _check_comment_capitalization(
+        self,
+        token: tokenize.TokenInfo,
+    ) -> None:
+        """
+        Checks that single line comments start with capital letters.
+
+        for comment test if starts with
+            lowercase: lookup if multiline starts with capital
+            uppercase: check if it is single line or no previous comment
+        """
+        if token.start[0] == 1:
+            tokens = iter(self.file_tokens[self.file_tokens.index(token):])
+            available_offset = 2  # comment + newline
+            while True:
+                next_token = next(tokens)
+                if not available_offset:
+                    available_offset = self._offset_for_comment_line(
+                        next_token,
+                    )
+
+                if available_offset > 0:
+                    available_offset -= 1
+                    continue
+
+                if next_token.exact_type not in self._allowed_newlines:
+                    self.add_violation(EmptyLineAfterCodingViolation(token))
+                break
+
+    def visit_comment(self, token: tokenize.TokenInfo) -> None:
+        """
+        Checks single line comments if they follow consistent capitalization.
+
+        Raises:
+            InvalidCapitalizationCommentsViolation
+
+        """
+        self._check_comment_capitalization(token)
